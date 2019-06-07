@@ -4,23 +4,58 @@ local af
 local current_game = GAMESTATE:GetCurrentGame():GetName()
 ------------------------------------------------------------------------------------
 
+-- KNOWN BUG: enabling solo will make routine/couples inaccessible.
+
+-- WideScale is a builtin in _fallback/Scripts/02 Utilities.lua
+-- I believe it scales your coordinates to WideScreen.
+
 local xshift = WideScale(42,52)
 local choices = {
-	{ name="single", pads={{3, -xshift-14}}, x=_screen.cx-_screen.w/4 },
-	{ name="versus", pads={{2, -xshift-WideScale(60,70)}, {5, xshift-WideScale(60,70)}}, x=_screen.cx },
-	{ name="double", pads={{4,-xshift-WideScale(60,70)}, {4, xshift-WideScale(60,70)}}, x=_screen.cx+_screen.w/4 },
+	{ 
+		name="single",
+			-- used to pick game mode via engine functions
+		pads={{3, -xshift-14}},
+			-- passed to drawNinePanelPad(color, xoffset)
+			-- xoffset is the offset of the pad relative to text
+		x=_screen.w/4-_screen.w/8
+			-- moves to be 1/4 of the screen left of the center
+	},
+
+	{ 
+		name="versus",
+		pads={{2, -xshift-WideScale(60,70)}, {5, xshift-WideScale(60,70)}},
+		x=(_screen.w/4)*2-_screen.w/8
+	},
+
+	{ 
+		name="double",
+		pads={{4,-xshift-WideScale(60,70)}, {4, xshift-WideScale(60,70)}},
+		x=(_screen.w/4)*3-_screen.w/8 },
+
+	{ 
+		name="routine",
+		pads= {{2,-xshift-WideScale(60,70) }, {5, xshift-WideScale(60,70) } },
+		x=_screen.w-_screen.w/8
+	},
 }
+
+-- If solo is enabled in Options > Simply Love settings,
+-- replace the couples option with the solo option.
+-- This isn't really the best solution, but I'm pretty doubtful
+-- that people would want to use both solo and couples
+-- (They'd probably need 18 panel pads.) -ian
 if current_game=="dance" and ThemePrefs.Get("AllowDanceSolo") then
 	choices[1].x = _screen.w/4-_screen.w/8
 	choices[2].x = (_screen.w/4)*2-_screen.w/8
 	choices[3].x = (_screen.w/4)*3-_screen.w/8
 	choices[4] = { name="solo", pads={ {3, -xshift-14}}, x=_screen.w-_screen.w/8 }
 
--- double is not a valid style in kb7 and para
+-- double/routine is not a valid style in kb7 and para
 elseif current_game=="kb7" or current_game=="para" then
 	choices[1].x = _screen.cx-_screen.w/6
 	choices[2].x = _screen.cx+_screen.w/6
 	table.remove(choices, 3)
+	table.remove(choices, 4)
 end
 
 
@@ -51,6 +86,7 @@ local EnableChoices = function()
 		if GAMESTATE:EnoughCreditsToJoin()
 		or #GAMESTATE:GetHumanPlayers() == 2 then
 			af:GetChild("")[2].Enabled = true
+			af:GetChild("")[4].Enabled = true
 		end
 	end
 
@@ -63,6 +99,7 @@ local EnableChoices = function()
 		or #GAMESTATE:GetHumanPlayers() == 2 then
 			af:GetChild("")[2].Enabled = true
 			af:GetChild("")[3].Enabled = true
+			af:GetChild("")[4].Enabled = true
 		end
 	end
 
@@ -88,9 +125,13 @@ local GetNextEnabledChoice = function(dir)
 	end
 end
 
+-- Calls engine function to "join player."
+-- Verifies that the number of players is correct.
+-- For example, if both start buttons were pressed, 
+-- and doubles selected; unjoin one of the players.
 local JoinOrUnjoinPlayersMaybe = function(style, player)
-	-- if going into versus, ensure that both players are joined
-	if style == "versus" then
+	-- if going into versus/routine, ensure that both players are joined
+	if (style=="versus" or style=="routine") then
 		for player in ivalues({PLAYER_1, PLAYER_2}) do
 			if not GAMESTATE:IsHumanPlayer(player) then GAMESTATE:JoinPlayer(player) end
 		end
@@ -115,6 +156,7 @@ local JoinOrUnjoinPlayersMaybe = function(style, player)
 	end
 end
 
+-- Calls engine function to insert coin.
 local ManageCredits = function(style)
 
 	-- no need to deduct additional credits; just move on
@@ -133,20 +175,20 @@ local ManageCredits = function(style)
 		return
 	end
 
-	-- double for 1 credit; insert 1 credit if entering double and 2 players were joined from the title screen
+	-- double for 1 credit; insert 1 credit if entering double/routine and 2 players were joined from the title screen
 	if GAMESTATE:GetCoinMode() == "CoinMode_Pay"
 	and GAMESTATE:GetPremium() == "Premium_DoubleFor1Credit"
 	and #GAMESTATE:GetHumanPlayers() == 2
-	and style == "double" then
+	and (style == "double" or style=="routine") then
 		GAMESTATE:InsertCredit()
 		return
 	end
 
-	-- premium off; deduct 1 credit if entering versus or double
+	-- premium off; deduct 1 credit if entering versus or double or routine
 	if GAMESTATE:GetCoinMode() == "CoinMode_Pay"
 	and GAMESTATE:GetPremium() == "Premium_Off"
 	and #GAMESTATE:GetHumanPlayers() == 1
-	and (style=="versus" or style=="double") then
+	and (style=="versus" or style=="double" or style=="routine") then
 		GAMESTATE:InsertCoin( -GAMESTATE:GetCoinsNeededToJoin() )
 		return
 	end
