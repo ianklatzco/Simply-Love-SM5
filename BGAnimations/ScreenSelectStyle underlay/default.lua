@@ -314,7 +314,7 @@ local t = Def.ActorFrame{
 }
 
 for i,choice in ipairs(choices) do
-	t[#t+1] = LoadActor("./choice.lua", {choice, i} )
+	t[#t+1] = LoadActor("./DrawPads.lua", {choice, i} )
 end
 
 t[#t+1] = LoadActor( THEME:GetPathS("ScreenSelectMaster", "change") )..{ Name="Change", SupportPan=false }
