@@ -104,6 +104,16 @@ Branch.PlayerOptions = function()
 	if SCREENMAN:GetTopScreen():GetGoToOptions() then
 		return "ScreenPlayerOptions"
 	else
+		-- Routine mode specifically requires ScreenGameplayShared, not ScreenGameplay.
+
+		-- I'm not sure if this is the optimal place for this;
+		-- I don't know where Branch.PlayerOptions gets called from.
+
+		local style = GAMESTATE:GetCurrentStyle():GetName()
+		if ( style == "routine" ) then
+			return "ScreenGameplayShared"
+		end
+
 		return "ScreenGameplay"
 	end
 end
